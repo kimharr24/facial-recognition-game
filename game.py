@@ -1,27 +1,56 @@
 import cv2
 import sys
-cascPath = sys.argv[1]
-noseCascade = cv2.CascadeClassifier(cascPath)
+from cvzone.SelfiSegmentationModule import SelfiSegmentation
 
-video_capture = cv2.VideoCapture(0)
+noseCascade = cv2.CascadeClassifier("./haarcascade_mcs_nose.xml")
 
-while True:
-    # Capture frame-by-frame
-    ret, frame = video_capture.read()
+def removeBackground(img):
+    """
+    Removes the background of an image in OpenCV.
+    Keyword Arguments
+    img: the image to remove the background from.
+    Returns the image with the background removed.
+    """
+    segmentor = SelfiSegmentation()
+    img = segmentor.removeBG(img, (255, 255, 255), threshold = 0.55)
+    return img
 
+def getNoseCoordinates(frame):
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-
     nose = noseCascade.detectMultiScale(gray, 1.3, 5)
-    # Draw a rectangle around the nose
-    for (x, y, w, h) in nose:
-        cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 255, 0), 2)
+    
+    if len(nose) == 0:
+        return ()
 
-    # Display the resulting frame
-    cv2.imshow('Video', frame)
+    allCoordinates = nose[0]
+    
+    return (int(allCoordinates[0] + 0.5 * allCoordinates[2]),  int(allCoordinates[1] + 0.5 * allCoordinates[3]))
 
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        break
+def draw():
+    video_capture = cv2.VideoCapture(0)
+    brushCoordinates = []
+    
+    while True:
+        success, frame = video_capture.read()
+        # frame = removeBackground(frame)
+        
+        brushCoordinates.append(getNoseCoordinates(frame))
+        
+        if cv2.waitKey(1) & 0xFF == ord('d'):
+            brushCoordinates = []
+        else:   
+            for coordinate in brushCoordinates:
+                if len(coordinate) > 0:
+                    cv2.circle(frame, coordinate, radius = 10, color = (0, 0, 255), thickness = -1)
 
-# When everything is done, release the capture
-video_capture.release()
-cv2.destroyAllWindows()
+        cv2.imshow('Video', frame)
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+
+    video_capture.release()
+    cv2.destroyAllWindows()
+    
+def returnSavedPlot():
+    pass
+
+draw()
